@@ -4,7 +4,6 @@ import "./index.css";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import Root from "./routes/root";
 import "react-image-crop/dist/ReactCrop.css";
-import "./App.css";
 import Page1 from "./routes/page1";
 
 const router = createBrowserRouter([
