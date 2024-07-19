@@ -1,9 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
 import "./index.css";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import Root from "./routes/root";
+import "react-image-crop/dist/ReactCrop.css";
+import "./App.css";
+import Page1 from "./routes/page1";
 
 const router = createBrowserRouter([
 	{
@@ -11,8 +13,8 @@ const router = createBrowserRouter([
 		element: <Root />,
 	},
 	{
-		path: "/app",
-		element: <App />,
+		path: "/page1",
+		element: <Page1 />,
 	},
 ]);
 

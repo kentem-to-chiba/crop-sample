@@ -4,7 +4,7 @@ function Root() {
 	return (
 		<ul>
 			<li>
-				<Link to="/app">App</Link>
+				<Link to="/page1">Page1</Link>
 			</li>
 		</ul>
 	);
