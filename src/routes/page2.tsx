@@ -21,13 +21,11 @@ const Page2 = () => {
 		orgWidth: number;
 		orgHeight: number;
 		scale: number;
+		rotate: number;
 	}>();
 
 	// トリミング対象の画像を描画するためのcanvasを保持するref
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-
-	// canvasを一時的に保持するためのref
-	const tmpCanvasRef = useRef<HTMLCanvasElement>(null);
 
 	// トリミングされた画像を描画するためのcanvasを保持するref
 	const croppedCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -47,46 +45,50 @@ const Page2 = () => {
 
 	const handleRotate = () => {
 		if (!canvasRef.current) return;
-		if (!tmpCanvasRef.current) return;
 
 		const canvasCtx = canvasRef.current.getContext("2d");
 		if (!canvasCtx) return;
 
-		const tmpCanvasCtx = tmpCanvasRef.current.getContext("2d");
-		if (!tmpCanvasCtx) return;
-
-		tmpCanvasCtx.reset();
-
 		if (!imgSize) return;
 
-		const { long: imgLong, side: imgLongSide } = getLongSide(imgSize);
+		const { long: imgLong } = getLongSide(imgSize);
 
-		// 画像を90度回転させてcanvasに描画
-		tmpCanvasCtx.translate(imgLong / 2, imgLong / 2);
-		tmpCanvasCtx.rotate((90 * Math.PI) / 180);
-		tmpCanvasCtx.translate(-imgLong / 2, -imgLong / 2);
+		const img = new Image();
+		img.src = sampleImg;
+		img.onload = () => {
+			const { side: imgLongSide } = getLongSide({
+				orgWidth: img.width,
+				orgHeight: img.height,
+				scale: imgSize.scale,
+			});
+			canvasCtx.reset();
+			canvasCtx.translate(imgLong / 2, imgLong / 2);
+			canvasCtx.rotate(((imgSize.rotate + 90) * Math.PI) / 180);
+			canvasCtx.translate(-imgLong / 2, -imgLong / 2);
 
-		if (imgLongSide === "width") {
-			tmpCanvasCtx.drawImage(
-				canvasRef.current,
-				0,
-				0,
-				tmpCanvasCtx.canvas.width,
-				tmpCanvasCtx.canvas.height,
-			);
-		} else if (imgLongSide === "height") {
-			tmpCanvasCtx.drawImage(
-				canvasRef.current,
-				0,
-				0,
-				tmpCanvasCtx.canvas.width,
-				tmpCanvasCtx.canvas.height,
-			);
-		}
-
-		// 一時保存用のcanvasをcanvasに描画
-		canvasCtx.reset();
-		canvasCtx.drawImage(tmpCanvasRef.current, 0, 0);
+			if (imgLongSide === "width") {
+				canvasCtx.drawImage(
+					img,
+					0,
+					(img.width * imgSize.scale - img.height * imgSize.scale) / 2,
+					img.width * imgSize.scale,
+					img.height * imgSize.scale,
+				);
+			} else if (imgLongSide === "height") {
+				canvasCtx.drawImage(
+					img,
+					(img.height * imgSize.scale - img.width * imgSize.scale) / 2,
+					0,
+					img.width * imgSize.scale,
+					img.height * imgSize.scale,
+				);
+			}
+			canvasCtx.resetTransform();
+			setImgSize((prev) => {
+				if (!prev) return prev;
+				return { ...prev, rotate: prev.rotate + 90 };
+			});
+		};
 	};
 
 	const handleCrop = (newCropped: PixelCrop) => {
@@ -112,36 +114,51 @@ const Page2 = () => {
 		croppedCanvasCtx.putImageData(croppedImage, 0, 0);
 	};
 
-	const createHandleScale = (newScale: number) => () => {
+	const createHandleScale = (newScaleDiff: number) => () => {
 		if (!canvasRef.current) return;
-		if (!tmpCanvasRef.current) return;
 
 		const canvasCtx = canvasRef.current.getContext("2d");
 		if (!canvasCtx) return;
 
-		const tmpCanvasCtx = tmpCanvasRef.current.getContext("2d");
-		if (!tmpCanvasCtx) return;
+		if (!imgSize) return;
+		const newScale = imgSize.scale + newScaleDiff;
 
-		tmpCanvasCtx.reset();
+		const img = new Image();
+		img.src = sampleImg;
+		img.onload = () => {
+			const { long: imgLong, side: imgLongSide } = getLongSide({
+				orgWidth: img.width,
+				orgHeight: img.height,
+				scale: newScale,
+			});
+			canvasCtx.reset();
+			canvasCtx.translate((imgLong * newScale) / 2, (imgLong * newScale) / 2);
+			canvasCtx.rotate((imgSize.rotate * Math.PI) / 180);
+			canvasCtx.translate((-imgLong * newScale) / 2, (-imgLong * newScale) / 2);
 
-		// 画像を拡大・縮小してtmpCanvasに描画
-		tmpCanvasCtx.drawImage(
-			canvasRef.current,
-			0,
-			0,
-			tmpCanvasCtx.canvas.width * newScale,
-			tmpCanvasCtx.canvas.height * newScale,
-		);
-
-		// 一時保存用のcanvasをcanvasに描画
-		canvasCtx.reset();
-		canvasCtx.drawImage(tmpCanvasRef.current, 0, 0);
-
-		// 画像のサイズを更新
-		setImgSize((prev) => {
-			if (!prev) return prev;
-			return { ...prev, scale: prev.scale * newScale };
-		});
+			if (imgLongSide === "width") {
+				canvasCtx.drawImage(
+					img,
+					0,
+					(img.width * newScale - img.height * newScale) / 2,
+					img.width * newScale,
+					img.height * newScale,
+				);
+			} else if (imgLongSide === "height") {
+				canvasCtx.drawImage(
+					img,
+					(img.height * newScale - img.width * newScale) / 2,
+					0,
+					img.width * newScale,
+					img.height * newScale,
+				);
+			}
+			canvasCtx.resetTransform();
+			setImgSize((prev) => {
+				if (!prev) return prev;
+				return { ...prev, scale: newScale };
+			});
+		};
 	};
 
 	// 初期レンダリングの際に画像をロードして、canvasに描画する
@@ -176,7 +193,12 @@ const Page2 = () => {
 					img.height,
 				);
 			}
-			setImgSize({ orgWidth: img.width, orgHeight: img.height, scale: 1 });
+			setImgSize({
+				orgWidth: img.width,
+				orgHeight: img.height,
+				scale: 1,
+				rotate: 0,
+			});
 		};
 	}, [getLongSide]);
 
@@ -188,12 +210,12 @@ const Page2 = () => {
 			</button>
 
 			{/* canvasRefを拡大する */}
-			<button type="button" onClick={createHandleScale(1.1)}>
+			<button type="button" onClick={createHandleScale(0.1)}>
 				拡大
 			</button>
 
 			{/* canvasRefを縮小する */}
-			<button type="button" onClick={createHandleScale(0.9)}>
+			<button type="button" onClick={createHandleScale(-0.1)}>
 				縮小
 			</button>
 
@@ -205,13 +227,6 @@ const Page2 = () => {
 					style={{ border: "1px solid black" }}
 				/>
 			</ReactCrop>
-
-			<canvas
-				ref={tmpCanvasRef}
-				width={1500}
-				height={1500}
-				style={{ display: "none" }}
-			/>
 
 			{/* トリミングされた画像を描画 */}
 			<canvas
